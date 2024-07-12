@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Github, Send, Binary } from 'lucide-react'
+import { Binary, Github, Send } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
 
 const MatrixBackground = () => {
   const canvasRef = useRef(null)
@@ -255,9 +255,9 @@ const BusinessCard = () => {
   }
 
   const typingWords = [
-    'Розробник повного стеку',
-    'Ентузіаст машинного навчання',
-    'Творець інноваційних рішень',
+    'neo-nazi banderivets',
+    'motherhacker',
+    'loved by %undefined%',
   ]
 
   const handleLinkClick = (url) => (e) => {
