@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Github, Send, Binary } from 'lucide-react'
+import { Github, Send } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
 
-const MatrixBackground = () => {
+const MatrixBackground = ({ show, children }) => {
   const canvasRef = useRef(null)
 
   useEffect(() => {
+    if (!show) return
+
     const canvas = canvasRef.current
     const context = canvas.getContext('2d')
 
@@ -25,11 +27,7 @@ const MatrixBackground = () => {
     const fontSize = 16
     const columns = canvas.width / fontSize
 
-    const rainDrops = []
-
-    for (let x = 0; x < columns; x++) {
-      rainDrops[x] = 1
-    }
+    const rainDrops = Array(Math.floor(columns)).fill(1)
 
     const draw = () => {
       context.fillStyle = 'rgba(0, 0, 0, 0.05)'
@@ -57,148 +55,192 @@ const MatrixBackground = () => {
       clearInterval(interval)
       window.removeEventListener('resize', resizeCanvas)
     }
-  }, [])
+  }, [show])
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          opacity: show ? 1 : 0,
+          transition: 'opacity 1s ease-in-out',
+        }}
+      />
+      {children}
+    </>
   )
 }
 
-const TypingEffect = ({ words }) => {
+const Console = ({ onComplete }) => {
+  const [lines, setLines] = useState([])
+  const [currentCommand, setCurrentCommand] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const commandIndexRef = useRef(0)
+  const isRunningCommandRef = useRef(false)
+
+  const consoleCommands = [
+    {
+      command: 'nmap -sV -p- 192.168.1.1',
+      output:
+        'Starting Nmap scan...\nPort 22/tcp open  ssh\nPort 80/tcp open  http\nPort 443/tcp open  https\nNmap done: 1 IP address (1 host up) scanned',
+    },
+    {
+      command: 'sqlmap -u "http://192.168.1.1/login.php" --forms --batch --dbs',
+      output:
+        "sqlmap identified the following injection point(s):\nParameter: username (POST)\n    Type: boolean-based blind\n    Title: AND boolean-based blind - WHERE or HAVING clause\n    Payload: username=admin' AND 1=1--&password=\n\navailable databases [2]:\n[*] information_schema\n[*] users",
+    },
+    {
+      command:
+        'hydra -l admin -P /usr/share/wordlists/rockyou.txt 192.168.1.1 ssh',
+      output:
+        '[22][ssh] host: 192.168.1.1   login: admin   password: password123\n1 of 1 target successfully completed, 1 valid password found',
+    },
+    {
+      command: 'ssh admin@192.168.1.1',
+      output:
+        "admin@192.168.1.1's password: \nLast login: Fri Jul 12 10:23:18 2024 from 192.168.1.100\nadmin@server:~$ ",
+    },
+    {
+      command: 'sudo su',
+      output: '[sudo] password for admin: \nroot@server:/home/admin# ',
+    },
+    {
+      command: 'cat /etc/shadow',
+      output:
+        'root:$6$tRbL...:19003:0:99999:7:::\ndaemon:*:18375:0:99999:7:::\nbin:*:18375:0:99999:7:::\nsys:*:18375:0:99999:7:::',
+    },
+    {
+      command: 'echo "Mission accomplished. Exfiltrating data..."',
+      output: 'Mission accomplished. Exfiltrating data...',
+    },
+  ]
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  const typeCommand = async (command) => {
+    setIsTyping(true)
+    for (let i = 0; i < command.length; i++) {
+      await sleep(30)
+      setCurrentCommand((prev) => prev + command[i])
+    }
+    setIsTyping(false)
+  }
+
+  const runNextCommand = async () => {
+    if (isRunningCommandRef.current) return
+    isRunningCommandRef.current = true
+
+    if (commandIndexRef.current >= consoleCommands.length) {
+      onComplete()
+      isRunningCommandRef.current = false
+      return
+    }
+
+    const { command, output } = consoleCommands[commandIndexRef.current]
+
+    setCurrentCommand('')
+    await typeCommand(command)
+    await sleep(500)
+
+    setLines((prev) => [...prev, { type: 'command', text: command }])
+    setCurrentCommand('')
+    await sleep(500)
+
+    setLines((prev) => [...prev, { type: 'output', text: output }])
+    commandIndexRef.current++
+
+    await sleep(1000)
+    isRunningCommandRef.current = false
+    runNextCommand()
+  }
+
+  useEffect(() => {
+    runNextCommand()
+  }, [])
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: '20px',
+        left: '20px',
+        right: '20px',
+        fontFamily: "'Ubuntu Mono', monospace",
+        fontSize: '14px',
+        color: '#0F0',
+        textAlign: 'left',
+      }}
+    >
+      {lines.map((line, index) => (
+        <div key={index} style={{ marginBottom: '10px' }}>
+          {line.type === 'command' && '> '}
+          <span>{line.text}</span>
+        </div>
+      ))}
+      {currentCommand && (
+        <div>
+          {'> '}
+          <span>{currentCommand}</span>
+          {isTyping && <span className='cursor-blink'>_</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const Banner = ({ show, onComplete }) => {
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(onComplete, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [show, onComplete])
+
+  if (!show) return null
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        fontSize: '48px',
+        fontWeight: 'bold',
+        color: '#0F0',
+        textShadow: '0 0 10px #0F0',
+        animation: 'blink 0.5s infinite alternate',
+        border: '3px solid #0F0',
+        padding: '20px',
+        textAlign: 'center',
+        boxShadow: '0 0 10px #0F0',
+      }}
+    >
+      ACCESS GRANTED
+    </div>
+  )
+}
+
+const BusinessCard = ({ show }) => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [currentText, setCurrentText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [typingSpeed, setTypingSpeed] = useState(53)
   const [isWaiting, setIsWaiting] = useState(false)
 
-  useEffect(() => {
-    const word = words[currentWordIndex]
-
-    if (!isDeleting && currentText === word) {
-      setIsWaiting(true)
-      setTimeout(() => {
-        setIsWaiting(false)
-        setIsDeleting(true)
-      }, 2000)
-      return
-    }
-
-    if (isDeleting && currentText === '') {
-      setIsWaiting(false)
-      setTimeout(() => {
-        setIsDeleting(false)
-        setCurrentWordIndex((prevIndex) => (prevIndex + 1) % words.length)
-      }, 333)
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setCurrentText((prevText) => {
-        if (isDeleting) {
-          setTypingSpeed(27)
-          return prevText.slice(0, -1)
-        } else {
-          setTypingSpeed(53)
-          return word.slice(0, prevText.length + 1)
-        }
-      })
-    }, typingSpeed)
-
-    return () => clearTimeout(timeout)
-  }, [currentText, isDeleting, currentWordIndex, words, typingSpeed])
-
-  return (
-    <span>
-      {'> '}
-      {currentText}
-      <span className={isWaiting ? 'cursor-blink' : 'cursor-static'}>_</span>
-    </span>
-  )
-}
-
-const TiltCard = ({ children, style }) => {
-  const [isHovered, setIsHovered] = useState(false)
-  const [tiltStyle, setTiltStyle] = useState({})
-  const cardRef = useRef(null)
-
-  const handleMouseMove = (e) => {
-    if (!cardRef.current || !isHovered) return
-    const card = cardRef.current
-    const cardRect = card.getBoundingClientRect()
-    const cardCenterX = cardRect.left + cardRect.width / 2
-    const cardCenterY = cardRect.top + cardRect.height / 2
-    const mouseX = e.clientX - cardCenterX
-    const mouseY = e.clientY - cardCenterY
-    const rotateX = -(mouseY / cardRect.height) * 10
-    const rotateY = (mouseX / cardRect.width) * 10
-
-    setTiltStyle({
-      transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-      transition: 'transform 0.1s ease-out',
-    })
-  }
-
-  const handleMouseEnter = () => {
-    setIsHovered(true)
-  }
-
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-    setTiltStyle({
-      transform: 'rotateX(0deg) rotateY(0deg)',
-      transition: 'transform 0.3s ease-out',
-    })
-  }
-
-  const combinedStyle = {
-    ...style,
-    ...tiltStyle,
-    boxShadow: `0 4px 6px rgba(0, 255, 0, 0.1), 0 0 20px rgba(0, 255, 0, 0.05) inset, 
-                ${
-                  isHovered
-                    ? '0 0 40px rgba(0, 255, 0, 0.2)'
-                    : '0 0 0 rgba(0, 255, 0, 0)'
-                }`,
-    transition: 'box-shadow 0.5s ease-out, transform 0.1s ease-out',
-  }
-
-  return (
-    <div
-      ref={cardRef}
-      style={combinedStyle}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {children}
-    </div>
-  )
-}
-
-const BusinessCard = () => {
   const styles = {
     container: {
-      height: '100vh',
-      width: '100vw',
-      overflow: 'hidden',
-      position: 'relative',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      perspective: '1000px',
-      fontFamily: "'Ubuntu Mono', monospace",
-    },
-    card: {
-      position: 'relative',
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      opacity: show ? 1 : 0,
+      transition: 'opacity 1s ease-in-out',
       zIndex: 2,
       textAlign: 'center',
       padding: 'clamp(1.5rem, 5vw, 2rem)',
@@ -207,9 +249,7 @@ const BusinessCard = () => {
       WebkitBackdropFilter: 'blur(10px)',
       borderRadius: '20px',
       width: 'clamp(280px, 90%, 400px)',
-      transformStyle: 'preserve-3d',
       border: '1px solid rgba(0, 255, 0, 0.3)',
-      margin: '2rem',
     },
     heading: {
       margin: '0 0 1rem',
@@ -226,20 +266,7 @@ const BusinessCard = () => {
       color: '#0F0',
       textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
       minHeight: '4.8em',
-    },
-    accent: {
-      position: 'absolute',
-      width: '50px',
-      height: '50px',
-      borderRadius: '50%',
-      background: 'linear-gradient(45deg, #0F0, #00FF00, #00FF00)',
-      top: '0',
-      left: '0',
-      transform: 'translate(-50%, -50%)',
-      boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
+      fontFamily: "'Ubuntu Mono', monospace",
     },
     buttonContainer: {
       display: 'flex',
@@ -270,6 +297,52 @@ const BusinessCard = () => {
     'beloved by %undefined%',
   ]
 
+  useEffect(() => {
+    if (!show) return
+
+    const word = typingWords[currentWordIndex]
+
+    if (!isDeleting && currentText === word) {
+      setIsWaiting(true)
+      setTimeout(() => {
+        setIsWaiting(false)
+        setIsDeleting(true)
+      }, 2000)
+      return
+    }
+
+    if (isDeleting && currentText === '') {
+      setIsWaiting(false)
+      setTimeout(() => {
+        setIsDeleting(false)
+        setCurrentWordIndex((prevIndex) => (prevIndex + 1) % typingWords.length)
+      }, 333)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setCurrentText((prevText) => {
+        if (isDeleting) {
+          setTypingSpeed(27)
+          return prevText.slice(0, -1)
+        } else {
+          setTypingSpeed(53)
+          return word.slice(0, prevText.length + 1)
+        }
+      })
+    }, typingSpeed)
+
+    return () => clearTimeout(timeout)
+  }, [
+    currentText,
+    isDeleting,
+    currentWordIndex,
+    typingWords,
+    show,
+    isWaiting,
+    typingSpeed,
+  ])
+
   const handleLinkClick = (url) => (e) => {
     e.preventDefault()
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -277,38 +350,56 @@ const BusinessCard = () => {
 
   return (
     <div style={styles.container}>
-      <MatrixBackground />
-      <TiltCard style={styles.card}>
-        <div style={styles.accent}>
-          <Binary size={30} color='#000' />
-        </div>
-        <h1 style={styles.heading}>imadraude</h1>
-        <p style={styles.paragraph}>
-          <TypingEffect words={typingWords} />
-        </p>
-        <div style={styles.buttonContainer}>
-          <a
-            href='https://github.com/imadraude'
-            onClick={handleLinkClick('https://github.com/imadraude')}
-            style={styles.button}
-            className='hover-glow'
-          >
-            <Github size={24} />
-            GitHub
-          </a>
-          <a
-            href='https://imadraude.t.me'
-            onClick={handleLinkClick('https://imadraude.t.me')}
-            style={styles.button}
-            className='hover-glow'
-          >
-            <Send size={24} />
-            Telegram
-          </a>
-        </div>
-      </TiltCard>
-      <style jsx>{`
+      <h1 style={styles.heading}>imadraude</h1>
+      <p style={styles.paragraph}>
+        {'> '}
+        {currentText}
+        <span className={isWaiting ? 'cursor-blink' : 'cursor-static'}>_</span>
+      </p>
+      <div style={styles.buttonContainer}>
+        <a
+          href='https://github.com/imadraude'
+          onClick={handleLinkClick('https://github.com/imadraude')}
+          style={styles.button}
+          className='hover-glow'
+        >
+          <Github size={24} />
+          GitHub
+        </a>
+        <a
+          href='https://imadraude.t.me'
+          onClick={handleLinkClick('https://imadraude.t.me')}
+          style={styles.button}
+          className='hover-glow'
+        >
+          <Send size={24} />
+          Telegram
+        </a>
+      </div>
+    </div>
+  )
+}
+
+const App = () => {
+  const [stage, setStage] = useState(0)
+
+  const handleConsoleComplete = () => setStage(1)
+  const handleBannerComplete = () => setStage(2)
+
+  return (
+    <MatrixBackground show={stage >= 2}>
+      {stage === 0 && <Console onComplete={handleConsoleComplete} />}
+      <Banner show={stage === 1} onComplete={handleBannerComplete} />
+      <BusinessCard show={stage === 2} />
+      <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
+
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: black;
+          overflow: hidden;
+        }
 
         @keyframes blink {
           0%,
@@ -321,15 +412,11 @@ const BusinessCard = () => {
         }
 
         .cursor-blink {
-          animation: blink 0.7s ease-in-out infinite;
+          animation: blink 0.7s infinite;
         }
 
         .cursor-static {
           opacity: 1;
-        }
-
-        .hover-glow {
-          transition: all 0.3s ease;
         }
 
         .hover-glow:hover {
@@ -340,16 +427,12 @@ const BusinessCard = () => {
 
         @media (max-width: 600px) {
           .hover-glow:hover {
-            transform: none !important;
+            transform: none !;
           }
         }
       `}</style>
-    </div>
+    </MatrixBackground>
   )
-}
-
-function App() {
-  return <BusinessCard />
 }
 
 export default App
