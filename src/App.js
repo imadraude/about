@@ -1,5 +1,5 @@
-import { Binary, Github, Send } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Github, Send, Binary } from 'lucide-react'
 
 const MatrixBackground = () => {
   const canvasRef = useRef(null)
@@ -8,8 +8,13 @@ const MatrixBackground = () => {
     const canvas = canvasRef.current
     const context = canvas.getContext('2d')
 
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    window.addEventListener('resize', resizeCanvas)
+    resizeCanvas()
 
     const katakana =
       'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン'
@@ -48,7 +53,10 @@ const MatrixBackground = () => {
 
     const interval = setInterval(draw, 30)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('resize', resizeCanvas)
+    }
   }, [])
 
   return (
@@ -123,7 +131,7 @@ const TiltCard = ({ children, style }) => {
   const cardRef = useRef(null)
 
   const handleMouseMove = (e) => {
-    if (!cardRef.current) return
+    if (!cardRef.current || !isHovered) return
     const card = cardRef.current
     const cardRect = card.getBoundingClientRect()
     const cardCenterX = cardRect.left + cardRect.width / 2
@@ -193,19 +201,19 @@ const BusinessCard = () => {
       position: 'relative',
       zIndex: 2,
       textAlign: 'center',
-      padding: '3rem',
+      padding: '2rem',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       borderRadius: '20px',
-      maxWidth: '80%',
+      maxWidth: '90%',
       width: '400px',
       transformStyle: 'preserve-3d',
       border: '1px solid rgba(0, 255, 0, 0.3)',
     },
     heading: {
       margin: '0 0 1rem',
-      fontSize: '2.5rem',
+      fontSize: 'clamp(1.5rem, 5vw, 2.5rem)',
       fontWeight: '700',
       color: '#0F0',
       textShadow: '2px 2px 4px rgba(0,255,0,0.3)',
@@ -213,11 +221,11 @@ const BusinessCard = () => {
     },
     paragraph: {
       margin: '0 0 1.5rem',
-      fontSize: '1rem',
+      fontSize: 'clamp(0.8rem, 3vw, 1rem)',
       lineHeight: '1.6',
       color: '#0F0',
       textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
-      height: '3em',
+      height: '4.8em',
     },
     accent: {
       position: 'absolute',
@@ -236,6 +244,7 @@ const BusinessCard = () => {
       display: 'flex',
       justifyContent: 'center',
       gap: '1rem',
+      flexWrap: 'wrap',
     },
     button: {
       padding: '0.5rem 1rem',
@@ -243,7 +252,7 @@ const BusinessCard = () => {
       border: 'none',
       background: 'rgba(0, 255, 0, 0.1)',
       color: '#0F0',
-      fontSize: '1rem',
+      fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       display: 'flex',
@@ -327,9 +336,19 @@ const BusinessCard = () => {
           transform: translateY(-2px) !important;
           box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
         }
+
+        @media (max-width: 600px) {
+          .hover-glow:hover {
+            transform: none !important;
+          }
+        }
       `}</style>
     </div>
   )
 }
 
-export default BusinessCard
+function App() {
+  return <BusinessCard />
+}
+
+export default App
