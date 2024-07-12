@@ -257,7 +257,7 @@ const BusinessCard = () => {
   const typingWords = [
     'neo-nazi banderivets',
     'motherhacker',
-    'loved by %undefined%',
+    'beloved by %undefined%',
   ]
 
   const handleLinkClick = (url) => (e) => {
