@@ -213,7 +213,7 @@ const BusinessCard = () => {
     },
     heading: {
       margin: '0 0 1rem',
-      fontSize: 'clamp(1.5rem, 5vw, 2.5rem)',
+      fontSize: 'clamp(2rem, 7vw, 2.5rem)',
       fontWeight: '700',
       color: '#0F0',
       textShadow: '2px 2px 4px rgba(0,255,0,0.3)',
@@ -221,7 +221,7 @@ const BusinessCard = () => {
     },
     paragraph: {
       margin: '0 0 1.5rem',
-      fontSize: 'clamp(0.8rem, 3vw, 1rem)',
+      fontSize: 'clamp(1rem, 4vw, 1.2rem)',
       lineHeight: '1.6',
       color: '#0F0',
       textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
@@ -248,12 +248,12 @@ const BusinessCard = () => {
       flexWrap: 'wrap',
     },
     button: {
-      padding: '0.5rem 1rem',
+      padding: '0.7rem 1.2rem',
       borderRadius: '50px',
       border: 'none',
       background: 'rgba(0, 255, 0, 0.1)',
       color: '#0F0',
-      fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
+      fontSize: 'clamp(1rem, 3.5vw, 1.2rem)',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       display: 'flex',
@@ -293,7 +293,7 @@ const BusinessCard = () => {
             style={styles.button}
             className='hover-glow'
           >
-            <Github size={20} />
+            <Github size={24} />
             GitHub
           </a>
           <a
@@ -302,7 +302,7 @@ const BusinessCard = () => {
             style={styles.button}
             className='hover-glow'
           >
-            <Send size={20} />
+            <Send size={24} />
             Telegram
           </a>
         </div>
