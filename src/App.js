@@ -25,7 +25,11 @@ const MatrixBackground = () => {
     const fontSize = 16
     const columns = canvas.width / fontSize
 
-    const rainDrops = Array(Math.floor(columns)).fill(1)
+    const rainDrops = []
+
+    for (let x = 0; x < columns; x++) {
+      rainDrops[x] = 1
+    }
 
     const draw = () => {
       context.fillStyle = 'rgba(0, 0, 0, 0.05)'
@@ -34,17 +38,17 @@ const MatrixBackground = () => {
       context.fillStyle = '#0F0'
       context.font = fontSize + 'px monospace'
 
-      rainDrops.forEach((drop, i) => {
+      for (let i = 0; i < rainDrops.length; i++) {
         const text = alphabet.charAt(
           Math.floor(Math.random() * alphabet.length),
         )
-        context.fillText(text, i * fontSize, drop * fontSize)
+        context.fillText(text, i * fontSize, rainDrops[i] * fontSize)
 
-        if (drop * fontSize > canvas.height && Math.random() > 0.975) {
+        if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
           rainDrops[i] = 0
         }
         rainDrops[i]++
-      })
+      }
     }
 
     const interval = setInterval(draw, 30)
@@ -197,16 +201,15 @@ const BusinessCard = () => {
       position: 'relative',
       zIndex: 2,
       textAlign: 'center',
-      padding: '2rem',
+      padding: 'clamp(1.5rem, 5vw, 2rem)',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       borderRadius: '20px',
-      maxWidth: '90%',
-      width: '100%',
-      maxWidth: '400px',
+      width: 'clamp(280px, 90%, 400px)',
       transformStyle: 'preserve-3d',
       border: '1px solid rgba(0, 255, 0, 0.3)',
+      margin: '2rem',
     },
     heading: {
       margin: '0 0 1rem',
@@ -230,8 +233,9 @@ const BusinessCard = () => {
       height: '50px',
       borderRadius: '50%',
       background: 'linear-gradient(45deg, #0F0, #00FF00, #00FF00)',
-      top: '-25px',
-      left: '-25px',
+      top: '0',
+      left: '0',
+      transform: 'translate(-50%, -50%)',
       boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
       display: 'flex',
       justifyContent: 'center',
@@ -339,21 +343,13 @@ const BusinessCard = () => {
             transform: none !important;
           }
         }
-
-        @media (max-width: 480px) {
-          .card {
-            padding: 1.5rem;
-          }
-          .accent {
-            width: 40px;
-            height: 40px;
-            top: -20px;
-            left: -20px;
-          }
-        }
       `}</style>
     </div>
   )
 }
 
-export default BusinessCard
+function App() {
+  return <BusinessCard />
+}
+
+export default App
