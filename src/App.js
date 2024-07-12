@@ -25,11 +25,7 @@ const MatrixBackground = () => {
     const fontSize = 16
     const columns = canvas.width / fontSize
 
-    const rainDrops = []
-
-    for (let x = 0; x < columns; x++) {
-      rainDrops[x] = 1
-    }
+    const rainDrops = Array(Math.floor(columns)).fill(1)
 
     const draw = () => {
       context.fillStyle = 'rgba(0, 0, 0, 0.05)'
@@ -38,17 +34,17 @@ const MatrixBackground = () => {
       context.fillStyle = '#0F0'
       context.font = fontSize + 'px monospace'
 
-      for (let i = 0; i < rainDrops.length; i++) {
+      rainDrops.forEach((drop, i) => {
         const text = alphabet.charAt(
           Math.floor(Math.random() * alphabet.length),
         )
-        context.fillText(text, i * fontSize, rainDrops[i] * fontSize)
+        context.fillText(text, i * fontSize, drop * fontSize)
 
-        if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        if (drop * fontSize > canvas.height && Math.random() > 0.975) {
           rainDrops[i] = 0
         }
         rainDrops[i]++
-      }
+      })
     }
 
     const interval = setInterval(draw, 30)
@@ -207,7 +203,8 @@ const BusinessCard = () => {
       WebkitBackdropFilter: 'blur(10px)',
       borderRadius: '20px',
       maxWidth: '90%',
-      width: '400px',
+      width: '100%',
+      maxWidth: '400px',
       transformStyle: 'preserve-3d',
       border: '1px solid rgba(0, 255, 0, 0.3)',
     },
@@ -225,7 +222,7 @@ const BusinessCard = () => {
       lineHeight: '1.6',
       color: '#0F0',
       textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
-      height: '4.8em',
+      minHeight: '4.8em',
     },
     accent: {
       position: 'absolute',
@@ -342,13 +339,21 @@ const BusinessCard = () => {
             transform: none !important;
           }
         }
+
+        @media (max-width: 480px) {
+          .card {
+            padding: 1.5rem;
+          }
+          .accent {
+            width: 40px;
+            height: 40px;
+            top: -20px;
+            left: -20px;
+          }
+        }
       `}</style>
     </div>
   )
 }
 
-function App() {
-  return <BusinessCard />
-}
-
-export default App
+export default BusinessCard
