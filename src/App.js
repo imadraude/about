@@ -1,22 +1,38 @@
 import { Github, Send } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 const MatrixBackground = ({ show, children }) => {
   const canvasRef = useRef(null)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
-    if (!show) return
-
-    const canvas = canvasRef.current
-    const context = canvas.getContext('2d')
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
     }
 
-    window.addEventListener('resize', resizeCanvas)
-    resizeCanvas()
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    if (show !== 'true') return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const context = canvas.getContext('2d')
+    if (!context) return
+
+    let animationFrameId
+    let lastUpdateTime = 0
+    const updateInterval = 40 // Оновлюємо кожні 50 мс для сповільнення анімації
+
+    canvas.width = dimensions.width
+    canvas.height = dimensions.height
 
     const katakana =
       'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン'
@@ -25,37 +41,44 @@ const MatrixBackground = ({ show, children }) => {
     const alphabet = katakana + latin + nums
 
     const fontSize = 16
-    const columns = canvas.width / fontSize
+    const columns = Math.ceil(canvas.width / fontSize)
+    const rainDrops = Array(columns).fill(1)
 
-    const rainDrops = Array(Math.floor(columns)).fill(1)
+    const draw = (currentTime) => {
+      if (currentTime - lastUpdateTime > updateInterval) {
+        context.fillStyle = 'rgba(0, 0, 0, 0.05)'
+        context.fillRect(0, 0, canvas.width, canvas.height)
 
-    const draw = () => {
-      context.fillStyle = 'rgba(0, 0, 0, 0.05)'
-      context.fillRect(0, 0, canvas.width, canvas.height)
+        context.fillStyle = '#0F0'
+        context.font = fontSize + 'px monospace'
 
-      context.fillStyle = '#0F0'
-      context.font = fontSize + 'px monospace'
+        for (let i = 0; i < rainDrops.length; i++) {
+          const text = alphabet.charAt(
+            Math.floor(Math.random() * alphabet.length),
+          )
+          context.fillText(text, i * fontSize, rainDrops[i] * fontSize)
 
-      for (let i = 0; i < rainDrops.length; i++) {
-        const text = alphabet.charAt(
-          Math.floor(Math.random() * alphabet.length),
-        )
-        context.fillText(text, i * fontSize, rainDrops[i] * fontSize)
-
-        if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          rainDrops[i] = 0
+          if (
+            rainDrops[i] * fontSize > canvas.height &&
+            Math.random() > 0.975
+          ) {
+            rainDrops[i] = 0
+          }
+          rainDrops[i]++
         }
-        rainDrops[i]++
+
+        lastUpdateTime = currentTime
       }
+
+      animationFrameId = requestAnimationFrame(draw)
     }
 
-    const interval = setInterval(draw, 30)
+    draw(0)
 
     return () => {
-      clearInterval(interval)
-      window.removeEventListener('resize', resizeCanvas)
+      cancelAnimationFrame(animationFrameId)
     }
-  }, [show])
+  }, [show, dimensions])
 
   return (
     <>
@@ -67,7 +90,7 @@ const MatrixBackground = ({ show, children }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          opacity: show ? 1 : 0,
+          opacity: show === 'true' ? 1 : 0,
           transition: 'opacity 1s ease-in-out',
         }}
       />
@@ -145,16 +168,16 @@ const Console = ({ onComplete }) => {
 
     setCurrentCommand('')
     await typeCommand(command)
-    await sleep(500)
+    await sleep(200)
 
     setLines((prev) => [...prev, { type: 'command', text: command }])
     setCurrentCommand('')
-    await sleep(500)
+    await sleep(200)
 
     setLines((prev) => [...prev, { type: 'output', text: output }])
     commandIndexRef.current++
 
-    await sleep(1000)
+    await sleep(500)
     isRunningCommandRef.current = false
     runNextCommand()
   }
@@ -195,13 +218,13 @@ const Console = ({ onComplete }) => {
 
 const Banner = ({ show, onComplete }) => {
   useEffect(() => {
-    if (show) {
+    if (show === 'true') {
       const timer = setTimeout(onComplete, 2000)
       return () => clearTimeout(timer)
     }
   }, [show, onComplete])
 
-  if (!show) return null
+  if (show !== 'true') return null
 
   return (
     <div
@@ -227,69 +250,16 @@ const Banner = ({ show, onComplete }) => {
 }
 
 const BusinessCard = ({ show }) => {
-  const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [currentText, setCurrentText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
-  const [typingSpeed, setTypingSpeed] = useState(53)
   const [isWaiting, setIsWaiting] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
-  const styles = {
-    container: {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      opacity: show ? 1 : 0,
-      transition: 'opacity 1s ease-in-out',
-      zIndex: 2,
-      textAlign: 'center',
-      padding: 'clamp(1.5rem, 5vw, 2rem)',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
-      borderRadius: '20px',
-      width: 'clamp(280px, 90%, 400px)',
-      border: '1px solid rgba(0, 255, 0, 0.3)',
-    },
-    heading: {
-      margin: '0 0 1rem',
-      fontSize: 'clamp(2rem, 7vw, 2.5rem)',
-      fontWeight: '700',
-      color: '#0F0',
-      textShadow: '2px 2px 4px rgba(0,255,0,0.3)',
-      fontFamily: "'Ubuntu Mono', monospace",
-    },
-    paragraph: {
-      margin: '0 0 1.5rem',
-      fontSize: 'clamp(1rem, 4vw, 1.2rem)',
-      lineHeight: '1.6',
-      color: '#0F0',
-      textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
-      minHeight: '4.8em',
-      fontFamily: "'Ubuntu Mono', monospace",
-    },
-    buttonContainer: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '1rem',
-      flexWrap: 'wrap',
-    },
-    button: {
-      padding: '0.7rem 1.2rem',
-      borderRadius: '50px',
-      border: 'none',
-      background: 'rgba(0, 255, 0, 0.1)',
-      color: '#0F0',
-      fontSize: 'clamp(1rem, 3.5vw, 1.2rem)',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      textDecoration: 'none',
-      fontFamily: "'Ubuntu Mono', monospace",
-    },
-  }
+  const cardRef = useRef(null)
+  const currentWordIndexRef = useRef(0)
+  const typingSpeedRef = useRef(53)
+  const tiltRef = useRef({ x: 0, y: 0 })
+  const rafRef = useRef(null)
 
   const typingWords = [
     'neo-nazi banderivets',
@@ -298,9 +268,16 @@ const BusinessCard = ({ show }) => {
   ]
 
   useEffect(() => {
-    if (!show) return
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
-    const word = typingWords[currentWordIndex]
+  const animateText = useCallback(() => {
+    const word = typingWords[currentWordIndexRef.current]
 
     if (!isDeleting && currentText === word) {
       setIsWaiting(true)
@@ -312,69 +289,219 @@ const BusinessCard = ({ show }) => {
     }
 
     if (isDeleting && currentText === '') {
-      setIsWaiting(false)
+      setIsWaiting(true)
       setTimeout(() => {
+        setIsWaiting(false)
         setIsDeleting(false)
-        setCurrentWordIndex((prevIndex) => (prevIndex + 1) % typingWords.length)
-      }, 333)
+        currentWordIndexRef.current =
+          (currentWordIndexRef.current + 1) % typingWords.length
+        typingSpeedRef.current = 53
+      }, 500)
       return
     }
 
     const timeout = setTimeout(() => {
       setCurrentText((prevText) => {
         if (isDeleting) {
-          setTypingSpeed(27)
+          typingSpeedRef.current = 27
           return prevText.slice(0, -1)
         } else {
-          setTypingSpeed(53)
+          typingSpeedRef.current = 53
           return word.slice(0, prevText.length + 1)
         }
       })
-    }, typingSpeed)
+    }, typingSpeedRef.current)
 
     return () => clearTimeout(timeout)
-  }, [
-    currentText,
-    isDeleting,
-    currentWordIndex,
-    typingWords,
-    show,
-    isWaiting,
-    typingSpeed,
-  ])
+  }, [currentText, isDeleting, isWaiting, typingWords])
 
-  const handleLinkClick = (url) => (e) => {
-    e.preventDefault()
-    window.open(url, '_blank', 'noopener,noreferrer')
+  useEffect(() => {
+    if (show === 'true') {
+      animateText()
+    }
+  }, [show, animateText])
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (isMobile || !cardRef.current) return
+
+      const rect = cardRef.current.getBoundingClientRect()
+
+      const mouseX = (e.clientX - rect.left) / rect.width
+      const mouseY = (e.clientY - rect.top) / rect.height
+
+      const maxTilt = 10
+
+      const tiltX = maxTilt * (mouseX * 2 - 1)
+      const tiltY = maxTilt * (mouseY * 2 - 1)
+
+      tiltRef.current = {
+        x: tiltX,
+        y: -tiltY,
+      }
+    },
+    [isMobile],
+  )
+
+  const handleMouseLeave = useCallback(() => {
+    if (!isMobile) {
+      const resetTilt = () => {
+        tiltRef.current = {
+          x: tiltRef.current.x * 0.9,
+          y: tiltRef.current.y * 0.9,
+        }
+        if (
+          Math.abs(tiltRef.current.x) > 0.1 ||
+          Math.abs(tiltRef.current.y) > 0.1
+        ) {
+          requestAnimationFrame(resetTilt)
+        } else {
+          tiltRef.current = { x: 0, y: 0 }
+        }
+      }
+      resetTilt()
+    }
+  }, [isMobile])
+
+  const updateTilt = useCallback(() => {
+    if (cardRef.current) {
+      const { x, y } = tiltRef.current
+      cardRef.current.style.transform = `perspective(1000px) rotateX(${y}deg) rotateY(${x}deg)`
+    }
+    rafRef.current = requestAnimationFrame(updateTilt)
+  }, [])
+
+  useEffect(() => {
+    if (!isMobile) {
+      rafRef.current = requestAnimationFrame(updateTilt)
+    }
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [isMobile, updateTilt])
+
+  const handleLinkClick = useCallback(
+    (url) => (e) => {
+      e.preventDefault()
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    [],
+  )
+
+  const styles = {
+    wrapper: {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      perspective: '1000px',
+      width: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    container: {
+      opacity: show === 'true' ? 1 : 0,
+      transition:
+        'opacity 1s ease-in-out, box-shadow 0.3s ease-in-out, transform 0.1s ease-out',
+      zIndex: 2,
+      textAlign: 'center',
+      padding: 'clamp(1rem, 3vw, 2rem)',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      borderRadius: '20px',
+      width: 'clamp(280px, 90%, 400px)',
+      maxWidth: '90vw',
+      border: '1px solid rgba(0, 255, 0, 0.3)',
+      boxShadow: '0 0 20px rgba(0, 255, 0, 0.1)',
+      transformStyle: 'preserve-3d',
+      transform: 'perspective(1000px)',
+    },
+    content: {
+      transform: 'translateZ(50px)',
+    },
+    heading: {
+      margin: '0 0 0.5rem',
+      fontSize: 'clamp(1.5rem, 5vw, 2.5rem)',
+      fontWeight: '700',
+      color: '#0F0',
+      textShadow: '2px 2px 4px rgba(0,255,0,0.3)',
+      fontFamily: "'Ubuntu Mono', monospace",
+    },
+    paragraph: {
+      margin: '0 0 1rem',
+      fontSize: 'clamp(0.8rem, 3vw, 1.2rem)',
+      lineHeight: '1.4',
+      color: '#0F0',
+      textShadow: '1px 1px 2px rgba(0,255,0,0.2)',
+      minHeight: '3.6em',
+      fontFamily: "'Ubuntu Mono', monospace",
+    },
+    buttonContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 'clamp(0.5rem, 2vw, 1rem)',
+      flexWrap: 'wrap',
+    },
+    button: {
+      padding: 'clamp(0.5rem, 2vw, 0.7rem) clamp(0.8rem, 3vw, 1.2rem)',
+      borderRadius: '50px',
+      border: 'none',
+      background: 'rgba(0, 255, 0, 0.1)',
+      color: '#0F0',
+      fontSize: 'clamp(0.8rem, 3vw, 1.2rem)',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      textDecoration: 'none',
+      fontFamily: "'Ubuntu Mono', monospace",
+    },
   }
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>imadraude</h1>
-      <p style={styles.paragraph}>
-        {'> '}
-        {currentText}
-        <span className={isWaiting ? 'cursor-blink' : 'cursor-static'}>_</span>
-      </p>
-      <div style={styles.buttonContainer}>
-        <a
-          href='https://github.com/imadraude'
-          onClick={handleLinkClick('https://github.com/imadraude')}
-          style={styles.button}
-          className='hover-glow'
-        >
-          <Github size={24} />
-          GitHub
-        </a>
-        <a
-          href='https://imadraude.t.me'
-          onClick={handleLinkClick('https://imadraude.t.me')}
-          style={styles.button}
-          className='hover-glow'
-        >
-          <Send size={24} />
-          Telegram
-        </a>
+    <div style={styles.wrapper}>
+      <div
+        ref={cardRef}
+        style={styles.container}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className='card-glow'
+      >
+        <div style={styles.content}>
+          <h1 style={styles.heading}>imadraude</h1>
+          <p style={styles.paragraph}>
+            {'> '}
+            {currentText}
+            <span className={isWaiting ? 'cursor-blink' : 'cursor-static'}>
+              _
+            </span>
+          </p>
+          <div style={styles.buttonContainer}>
+            <a
+              href='https://github.com/imadraude'
+              onClick={handleLinkClick('https://github.com/imadraude')}
+              style={styles.button}
+              className='hover-glow'
+            >
+              <Github size={20} />
+              GitHub
+            </a>
+            <a
+              href='https://imadraude.t.me'
+              onClick={handleLinkClick('https://imadraude.t.me')}
+              style={styles.button}
+              className='hover-glow'
+            >
+              <Send size={20} />
+              Telegram
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -383,14 +510,18 @@ const BusinessCard = ({ show }) => {
 const App = () => {
   const [stage, setStage] = useState(0)
 
-  const handleConsoleComplete = () => setStage(1)
-  const handleBannerComplete = () => setStage(2)
+  const handleConsoleComplete = useCallback(() => setStage(1), [])
+  const handleBannerComplete = useCallback(() => setStage(2), [])
 
   return (
-    <MatrixBackground show={stage >= 2}>
-      {stage === 0 && <Console onComplete={handleConsoleComplete} />}
-      <Banner show={stage === 1} onComplete={handleBannerComplete} />
-      <BusinessCard show={stage === 2} />
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      <MatrixBackground show={stage >= 2 ? 'true' : 'false'}>
+        {stage === 0 && <Console onComplete={handleConsoleComplete} />}
+        {stage === 1 && (
+          <Banner show='true' onComplete={handleBannerComplete} />
+        )}
+        {stage === 2 && <BusinessCard show='true' />}
+      </MatrixBackground>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap');
 
@@ -419,19 +550,25 @@ const App = () => {
           opacity: 1;
         }
 
-        .hover-glow:hover {
-          background: rgba(0, 255, 0, 0.15) !important;
-          transform: translateY(-2px) !important;
-          box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
+        .card-glow {
+          transition: box-shadow 0.3s ease-in-out, transform 0.1s ease-out;
         }
 
-        @media (max-width: 600px) {
-          .hover-glow:hover {
-            transform: none !;
-          }
+        .card-glow:hover {
+          box-shadow: 0 0 20px rgba(0, 255, 0, 0.2),
+            0 0 40px rgba(0, 255, 0, 0.1) !important;
+        }
+
+        .hover-glow {
+          transition: all 0.3s ease-in-out;
+        }
+
+        .hover-glow:hover {
+          background-color: rgba(0, 255, 0, 0.2) !important;
+          box-shadow: 0 0 15px rgba(0, 255, 0, 0.5) !important;
         }
       `}</style>
-    </MatrixBackground>
+    </div>
   )
 }
 
