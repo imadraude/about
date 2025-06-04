@@ -19,13 +19,16 @@ const MatrixBackground = ({ show, children }) => {
   }, [])
 
   useEffect(() => {
-    if (show !== 'true') return
-
     const canvas = canvasRef.current
     if (!canvas) return
 
     const context = canvas.getContext('2d')
     if (!context) return
+
+    if (show !== 'true') {
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
 
     let animationFrameId
     let lastUpdateTime = 0
@@ -77,6 +80,7 @@ const MatrixBackground = ({ show, children }) => {
 
     return () => {
       cancelAnimationFrame(animationFrameId)
+      context.clearRect(0, 0, canvas.width, canvas.height)
     }
   }, [show, dimensions])
 
